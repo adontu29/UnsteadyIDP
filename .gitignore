@@ -1,0 +1,29 @@
+# ======================
+# Ignore raw PIV datasets
+# ======================
+PIVdata/
+
+# ======================
+# MATLAB autosave
+# ======================
+*.asv
+*.m~
+*.mlx~
+
+# ======================
+# Simulink generated
+# ======================
+slprj/
+*.slxc
+*.mex*
+
+# ======================
+# Code generation
+# ======================
+codegen/
+
+# ======================
+# Windows junk
+# ======================
+Thumbs.db
+desktop.ini
