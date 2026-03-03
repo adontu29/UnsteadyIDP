@@ -27,3 +27,8 @@ codegen/
 # ======================
 Thumbs.db
 desktop.ini
+
+# MATLAB Project metadata 
+resources/
+
+!*.prj
