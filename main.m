@@ -4,35 +4,30 @@ close all
 S    = load('PIVdata/U15A10-10K100P0000.mat');
 data = S.datasa;
 
-X = data.v1;
-Z = data.v3;
-u = data.v4;
-w = data.v6;
+
+X = flip(data.v1,2);    % [mm]
+Z = flip(data.v3,2);    % [mm]
+u = flip(data.v4,2);
+w = -flip(data.v6,2);
 
 dx = abs(X(2,1) - X(1,1))/1000;    
 dz = abs(Z(1,2) - Z(1,1))/1000;  
 
-[du_dx, ~] = gradient(u, dx, dz);
-[~, dw_dz] = gradient(w, dx, dz);
+[du_dz, ~] = gradient(u, dz, dx);
+[~, dw_dx] = gradient(w, dz, dx);
 
 % Poisson RHS (or use zeros for Laplace)
 
 
 omegaMag = data.v20;
-div2D    = data.v21;
-isValid  = data.v44;
+div2D    = flip(data.v21,2);
+isValid  = flip(data.v44,2);
 
 f =div2D;
- %f = du_dx + dw_dz;
+%f = du_dx + dw_dz;
 % f = zeros(size(div2D));   % if you really want Laplace
 
 valid    = (isValid == 1);
-
-% Just for *using* the solution later (not for domain)
-omega_thr = prctile(abs(omegaMag(valid)), 40);
-div_thr   = prctile(abs(div2D(valid)),   80);
-potMask   = valid & abs(omegaMag) <= omega_thr & abs(div2D) <= div_thr;
-
 
 % --- keep only the largest connected component ---
 cc = bwconncomp(valid, 4);             % 4-connectivity
@@ -60,35 +55,48 @@ u(~isfinite(u)) = 0;
 w(~isfinite(w)) = 0;
 f(~isfinite(f)) = 0;
 
-
-phi = solvePoissonIrregularNeumann(X, Z, f, valid, u, w, 0);
-% Then call the solver with validClean instead of validMask
+rect = [-80, 5,-87, 87 ];
 
 
-% Visualise: only trust phi in potMask
-figure;
-contourf(X, Z, phi, 30); axis equal tight; colorbar;
+plotNormal(X,Z,valid,"Mask",1,-0.5,1,1.5)
+
+xL = -102;
+xR = -20;
+zB = -87;
+zT = 87;
+
+out = solveLaplacePotentialRect(X/1000, Z/1000, u, w, valid, rect/1000);
+phi = out.phi;
+
+minPhi = min(min(phi));
+maxPhi = max(max(phi));
+
+figure(1)
+hold on
+plotNormal(X,Z,phi,"phi",1,minPhi,(maxPhi-minPhi)/10,maxPhi)
+
+
+
+[phi_z, phi_x] = gradient(-out.phi_roi, out.dz, out.dx);
+
+
+alpha_phi = atan2(mean(phi_x(out.mask_roi),'all'), mean(phi_z(out.mask_roi),'all')) * 180/pi
+
+err_u = u(out.idx(1):out.idx(2), out.idx(3):out.idx(4)) - phi_x;
+err_w = w(out.idx(1):out.idx(2), out.idx(3):out.idx(4)) - phi_z;
+
 figure
-contour(X,Z,valid,[1 1],'k','LineWidth',1);    % measurement domain
+quiver(X(out.idx(1):out.idx(2), out.idx(3):out.idx(4)),Z(out.idx(1):out.idx(2), out.idx(3):out.idx(4)),u(out.idx(1):out.idx(2), out.idx(3):out.idx(4)),w(out.idx(1):out.idx(2), out.idx(3):out.idx(4)), 0.5)
+title("u,v")
+
 figure
-contour(X,Z,potMask,[1 1],'r','LineWidth',1.5);% potential region
-title('\phi, valid domain (black), potential region (red)');
+quiver(X(out.idx(1):out.idx(2), out.idx(3):out.idx(4)),Z(out.idx(1):out.idx(2), out.idx(3):out.idx(4)),phi_x,phi_z, 0.5)
+title("phi_x,phi_z")
 
-% Potential velocity
-[phi_x, phi_z] = gradient(phi, dx, dz);  
+figure
+quiver(X(out.idx(1):out.idx(2), out.idx(3):out.idx(4)),Z(out.idx(1):out.idx(2), out.idx(3):out.idx(4)),err_u,err_w, 1)
+title("error plot")
 
-[phi_x, phi_z] = gradient(phi, dx, dz);
 
-fprintf('max |u(valid)|     = %e\n', max(abs(u(valid)), [], 'all'));
-fprintf('max |phi_x(valid)| = %e\n', max(abs(phi_x(valid)), [], 'all'));
-fprintf('max |w(valid)|     = %e\n', max(abs(w(valid)), [], 'all'));
-fprintf('max |phi_z(valid)| = %e\n', max(abs(phi_z(valid)), [], 'all'));
-
-mask = potMask & ~isnan(u) & ~isnan(w);
-up = phi_x;   wp = phi_z;
-
-e_u  = u(mask) - up(mask);
-e_w  = w(mask) - wp(mask);
-
-fprintf('RMS error u: %g m/s\n', rms(e_u));
-fprintf('RMS error w: %g m/s\n', rms(e_w));
+fprintf('RMS u error: %.3g\n', rms(err_u(out.mask_roi), 'omitnan'));
+fprintf('RMS w error: %.3g\n', rms(err_w(out.mask_roi), 'omitnan'));

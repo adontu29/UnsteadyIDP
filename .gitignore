@@ -32,3 +32,6 @@ desktop.ini
 resources/
 
 !*.prj
+
+#script for testing stuff
+sandbox.m
