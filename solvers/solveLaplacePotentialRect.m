@@ -6,7 +6,7 @@ function out = solveLaplacePotentialRect(X, Z, u, w, valid, rect)
 % Inputs
 %   X,Z    : grids (same size) [mm or any units, but consistent]
 %   u,w    : velocities (same size) [units per second]; interpreted as:
-%            u = dphi/dx, w = dphi/dz  (phi has units of velocity*length)
+%            u = dphi/dx, w = dphi/dz  
 %   valid  : logical mask (same size) selecting usable data
 %   rect   : [x_left x_right z_bottom z_top] in same units as X,Z
 %
@@ -19,9 +19,8 @@ function out = solveLaplacePotentialRect(X, Z, u, w, valid, rect)
 %
 % Notes
 %   - Pure Neumann problem has an arbitrary constant; we fix phi(ref)=0.
-%   - Assumes approximately Cartesian grid with uniform spacing in x and z.
-%   - If your grid is slightly nonuniform, this still often works fine; for
-%     strongly nonuniform grids you’d want a variable-spacing discretization.
+%   - Assumes Cartesian grid with uniform spacing in x and z.
+
 
     arguments
         X (:,:) double
@@ -43,7 +42,7 @@ function out = solveLaplacePotentialRect(X, Z, u, w, valid, rect)
     xline = X(:,1);
     zline = Z(1,:);
 
-    i1 = find(xline >= xL, 1, 'first');
+    i1 = find(xline >= xL, 1, "first");
     i2 = find(xline <= xR, 1, 'last');
     j1 = find(zline >= zB, 1, 'first');
     j2 = find(zline <= zT, 1, 'last');
@@ -60,8 +59,7 @@ function out = solveLaplacePotentialRect(X, Z, u, w, valid, rect)
     mr = valid(i1:i2, j1:j2);
 
     % --- estimate uniform spacings in METERS (or in same units consistently) ---
-    % If X,Z are in mm and u,w are in m/s: you want dx,dz in meters.
-    % Here we infer dx,dz in "X units". You can scale before calling if needed.
+
     dx = median(abs(diff(Xr(:,1))));
     dz = median(abs(diff(Zr(1,:))));
 
